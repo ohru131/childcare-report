@@ -1,0 +1,20 @@
+{
+  "firestore": {
+    "databaseId": "ai-studio-5b9ca531-8bac-495f-8d24-ff1c40567a9c",
+    "rules": "firestore.rules",
+    "edition": "ENTERPRISE",
+    "dataAccessMode": "FIRESTORE_NATIVE"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"name":"保育日報アプリ (Childcare Report App)","description":"保育士の業務をAIで支援する日報作成アプリ。音声入力や領収書OCR機能を備え、Firebaseでデータを管理します。","requestFramePermissions":[],"majorCapabilities":["Firebase Store","Firebase Auth","Gemini AI"]}

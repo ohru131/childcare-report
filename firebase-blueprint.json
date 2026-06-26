@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "details": { "type": "object", "description": "Key-value pair map of various customer details" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" }
+      },
+      "required": ["name", "address", "city"]
+    },
+    "FamilyMember": {
+      "title": "Family Member",
+      "description": "Family member of a customer",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "dob": { "type": "string" },
+        "job": { "type": "string" },
+        "allergy": { "type": "string" },
+        "info": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Daily or Accident report",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["daily", "accident"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "reportDate": { "type": "string" },
+        "content": { "type": "object" },
+        "riskRating": { "type": "number" },
+        "esRating": { "type": "number" }
+      },
+      "required": ["type", "reporterId", "customerId", "customerName", "reportDate", "content"]
+    },
+    "Receipt": {
+      "title": "Receipt",
+      "description": "Receipt image and metadata",
+      "type": "object",
+      "properties": {
+        "reportId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "amount": { "type": "number" },
+        "storeName": { "type": "string" },
+        "receiptDate": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "handoffText": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["staffId", "imageUrl", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Customer main info"
+    },
+    "/customers/{customerId}/family/{memberId}": {
+      "schema": "FamilyMember",
+      "description": "Family members for a customer"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Individual report"
+    },
+    "/receipts/{receiptId}": {
+      "schema": "Receipt",
+      "description": "Individual receipt"
+    }
+  }
+}
