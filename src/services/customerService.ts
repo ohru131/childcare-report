@@ -30,103 +30,103 @@ export async function seedSampleData() {
   const sampleCustomers = [
     {
       id: "cust_001",
-      name: "田中 太郎",
-      address: "東京都新宿区西新宿1-1-1",
-      city: "新宿区",
-      details: { "電話番号": "090-1234-5678", "メール": "tanaka@example.com" },
+      name: "織田 信長",
+      address: "京都府京都市中京区本能寺町522",
+      city: "中京区",
+      details: { "電話番号": "090-1234-5678", "メール": "nobunaga@example.com" },
       family: [
-        { name: "田中 結衣", dob: "2020/05/15", job: "保育園", allergy: "卵", info: "元気な女の子" },
-        { name: "田中 健太", dob: "2022/10/01", job: "自宅", allergy: "なし", info: "おっとりしている" }
+        { name: "織田 信忠", dob: "2020/05/15", job: "保育園", allergy: "卵", info: "元気な男の子" },
+        { name: "織田 奇妙丸", dob: "2022/10/01", job: "自宅", allergy: "なし", info: "おっとりしている" }
       ]
     },
     {
       id: "cust_002",
-      name: "佐藤 愛子",
-      address: "東京都港区芝公園4-2-8",
-      city: "港区",
-      details: { "電話番号": "080-9876-5432", "メール": "sato@example.com" },
+      name: "豊臣 秀吉",
+      address: "京都府京都市東山区茶屋町528",
+      city: "東山区",
+      details: { "電話番号": "080-9876-5432", "メール": "hideyoshi@example.com" },
       family: [
-        { name: "佐藤 蓮", dob: "2019/02/20", job: "幼稚園", allergy: "小麦", info: "活発で走り回るのが好き" }
+        { name: "豊臣 秀頼", dob: "2019/02/20", job: "幼稚園", allergy: "小麦", info: "活発で走り回るのが好き" }
       ]
     },
     {
       id: "cust_003",
-      name: "鈴木 一郎",
-      address: "東京都世田谷区北沢2-10-1",
-      city: "世田谷区",
-      details: { "電話番号": "070-1111-2222", "メール": "suzuki@example.com" },
+      name: "徳川 家康",
+      address: "京都府京都市中京区二条城町541",
+      city: "中京区",
+      details: { "電話番号": "070-1111-2222", "メール": "ieyasu@example.com" },
       family: [
-        { name: "鈴木 美咲", dob: "2021/08/12", job: "保育園", allergy: "牛乳", info: "人見知りがある" }
+        { name: "徳川 秀忠", dob: "2021/08/12", job: "保育園", allergy: "牛乳", info: "人見知りがある" }
       ]
     },
     {
       id: "cust_004",
-      name: "高橋 健司",
-      address: "東京都中野区中野5-6-7",
-      city: "中野区",
-      details: { "電話番号": "090-3333-4444", "メール": "takahashi@example.com" },
+      name: "坂本 龍馬",
+      address: "京都府京都市伏見区南浜町263",
+      city: "伏見区",
+      details: { "電話番号": "090-3333-4444", "メール": "ryoma@example.com" },
       family: [
-        { name: "高橋 颯太", dob: "2020/12/30", job: "保育園", allergy: "そば", info: "電車が大好き" }
+        { name: "坂本 おりょう", dob: "2020/12/30", job: "保育園", allergy: "そば", info: "元気いっぱいに遊ぶ" }
       ]
     },
     {
       id: "cust_005",
-      name: "伊藤 弘美",
-      address: "東京都杉並区高円寺南4-5-6",
-      city: "杉並区",
-      details: { "電話番号": "080-5555-6666", "メール": "ito@example.com" },
+      name: "源 義経",
+      address: "京都府京都市左京区鞍馬本町1074",
+      city: "左京区",
+      details: { "電話番号": "080-5555-6666", "メール": "yoshitsune@example.com" },
       family: [
-        { name: "伊藤 陽菜", dob: "2022/03/10", job: "自宅", allergy: "なし", info: "よく笑う" }
+        { name: "源 牛若丸", dob: "2022/03/10", job: "自宅", allergy: "なし", info: "よく笑う" }
       ]
     },
     {
       id: "cust_006",
-      name: "渡辺 亮",
-      address: "東京都練馬区豊玉北5-6-7",
-      city: "練馬区",
-      details: { "電話番号": "070-7777-8888", "メール": "watanabe@example.com" },
+      name: "足利 義満",
+      address: "京都府京都市北区金閣寺町1",
+      city: "北区",
+      details: { "電話番号": "070-7777-8888", "メール": "yoshimitsu@example.com" },
       family: [
-        { name: "渡辺 湊", dob: "2018/06/25", job: "小学校1年", allergy: "ピーナッツ", info: "お兄ちゃん気質" }
+        { name: "足利 義持", dob: "2018/06/25", job: "小学校1年", allergy: "ピーナッツ", info: "お兄ちゃん気質" }
       ]
     },
     {
       id: "cust_007",
-      name: "小林 直子",
-      address: "東京都大田区蒲田5-6-7",
-      city: "大田区",
-      details: { "電話番号": "090-9999-0000", "メール": "kobayashi@example.com" },
+      name: "紫 式部",
+      address: "京都府京都市上京区京都御苑3",
+      city: "上京区",
+      details: { "電話番号": "090-9999-0000", "メール": "shikibu@example.com" },
       family: [
-        { name: "小林 葵", dob: "2021/01/05", job: "保育園", allergy: "エビ", info: "おままごとが好き" }
+        { name: "藤原 賢子", dob: "2021/01/05", job: "保育園", allergy: "エビ", info: "おままごとが好き" }
       ]
     },
     {
       id: "cust_008",
-      name: "加藤 博",
-      address: "東京都北区王子1-2-3",
-      city: "北区",
-      details: { "電話番号": "080-1212-3434", "メール": "kato@example.com" },
+      name: "清少納言",
+      address: "京都府京都市下京区烏丸通塩小路下ル",
+      city: "下京区",
+      details: { "電話番号": "080-1212-3434", "メール": "shonagon@example.com" },
       family: [
-        { name: "加藤 結愛", dob: "2023/07/20", job: "自宅", allergy: "なし", info: "離乳食開始" }
+        { name: "橘 則季", dob: "2023/07/20", job: "自宅", allergy: "なし", info: "離乳食開始" }
       ]
     },
     {
       id: "cust_009",
-      name: "吉田 恵",
-      address: "東京都江戸川区中央1-2-3",
-      city: "江戸川区",
-      details: { "電話番号": "070-5656-7878", "メール": "yoshida@example.com" },
+      name: "平 清盛",
+      address: "京都府京都市下京区西八条通",
+      city: "下京区",
+      details: { "電話番号": "070-5656-7878", "メール": "kiyomori@example.com" },
       family: [
-        { name: "吉田 翔麻", dob: "2019/11/11", job: "幼稚園", allergy: "なし", info: "恐竜に詳しい" }
+        { name: "平 重盛", dob: "2019/11/11", job: "幼稚園", allergy: "なし", info: "恐竜に詳しい" }
       ]
     },
     {
       id: "cust_010",
-      name: "山口 慎吾",
-      address: "東京都足立区千住1-2-3",
-      city: "足立区",
-      details: { "電話番号": "090-2424-6868", "メール": "yamaguchi@example.com" },
+      name: "明智 光秀",
+      address: "京都府京都市右京区嵯峨小倉山堂ノ前町",
+      city: "右京区",
+      details: { "電話番号": "090-2424-6868", "メール": "mitsuhide@example.com" },
       family: [
-        { name: "山口 凛", dob: "2020/04/01", job: "保育園", allergy: "フルーツ", info: "絵本が大好き" }
+        { name: "細川 ガラシャ", dob: "2020/04/01", job: "保育園", allergy: "フルーツ", info: "絵本が大好き" }
       ]
     }
   ];
