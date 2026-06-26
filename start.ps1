@@ -30,10 +30,10 @@ if (-not (Test-Path "node_modules")) {
 Start-Job -ScriptBlock {
     Start-Sleep -Seconds 4
     Start-Process "http://localhost:3000"
-    Start-Process "http://localhost:4000"
+    Start-Process "http://localhost:4000/firestore"
 } | Out-Null
 
 # 4. Start the application
 Write-Host "🚀 Starting the Firebase Emulator Suite and Vite development server..." -ForegroundColor Green
 Write-Host "Press Ctrl+C in this terminal to stop the server." -ForegroundColor Gray
-npx firebase emulators:exec --only auth,firestore,ui "npm run dev"
+npx firebase emulators:exec --project=demo-childcare --ui --only auth,firestore --import=.emulator-data --export-on-exit=.emulator-data "npm run dev"
