@@ -36,4 +36,4 @@ Start-Job -ScriptBlock {
 # 4. Start the application
 Write-Host "🚀 Starting the Firebase Emulator Suite and Vite development server..." -ForegroundColor Green
 Write-Host "Press Ctrl+C in this terminal to stop the server." -ForegroundColor Gray
-npx firebase emulators:exec --only auth,firestore "npm run dev"
+npx firebase emulators:exec --only auth,firestore,ui "npm run dev"
