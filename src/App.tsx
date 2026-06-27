@@ -16,13 +16,46 @@ import { logAuditEvent } from "./services/auditService";
 
 const DETAIL_EXCLUDED_KEYS = new Set(["顧客ID", "パスワード", "Customer ID"]);
 
+const DETAIL_ORDER_HINTS = [
+  "氏名",
+  "姓",
+  "名",
+  "姓（カナ）",
+  "名（カナ）",
+  "会員種別",
+  "会員状況",
+  "電話番号",
+  "メール",
+  "性別",
+  "年代",
+  "住所",
+  "住所2",
+  "駐車場",
+  "緊急連絡先",
+  "災害時の避難場所",
+  "世帯全員の情報",
+  "顧客メモ",
+  "登録日時",
+  "最終更新日時",
+];
+
+function detailSortRank(key: string): number {
+  const foundIndex = DETAIL_ORDER_HINTS.findIndex((hint) => key.includes(hint));
+  return foundIndex >= 0 ? foundIndex : DETAIL_ORDER_HINTS.length + 100;
+}
+
 function toCustomerDetailEntries(customer: Customer): CustomerDetailItem[] {
+  const sortDetails = (entries: CustomerDetailItem[]) => entries.sort((a, b) => {
+    const rankDiff = detailSortRank(a.key) - detailSortRank(b.key);
+    return rankDiff !== 0 ? rankDiff : a.key.localeCompare(b.key, "ja");
+  });
+
   if (Array.isArray(customer.details)) {
-    return customer.details.filter((item) => item?.key && !DETAIL_EXCLUDED_KEYS.has(item.key));
+    return sortDetails(customer.details.filter((item) => item?.key && !DETAIL_EXCLUDED_KEYS.has(item.key)));
   }
-  return Object.entries(customer.details)
+  return sortDetails(Object.entries(customer.details)
     .filter(([key]) => !DETAIL_EXCLUDED_KEYS.has(key))
-    .map(([key, value]) => ({ key, value: value ?? "" }));
+    .map(([key, value]) => ({ key, value: value ?? "" })));
 }
 
 function getPrimaryAddress(customer: Customer): string {
