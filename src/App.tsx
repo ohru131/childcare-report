@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { fetchCustomers, seedSampleData } from "./services/customerService";
-import { AppSettings, Customer, Report } from "./types";
+import { AppSettings, Customer, CustomerDetailItem, Report } from "./types";
 import { Search, MapPin, User, FileText, Plus, LogOut, ChevronRight, Mic, Camera, AlertTriangle, CheckCircle2, History, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "./lib/utils";
@@ -13,6 +13,22 @@ import { db } from "./lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { getAppSettings, saveAppSettings } from "./services/settingsService";
 import { logAuditEvent } from "./services/auditService";
+
+const DETAIL_EXCLUDED_KEYS = new Set(["顧客ID", "パスワード", "Customer ID"]);
+
+function toCustomerDetailEntries(customer: Customer): CustomerDetailItem[] {
+  if (Array.isArray(customer.details)) {
+    return customer.details.filter((item) => item?.key && !DETAIL_EXCLUDED_KEYS.has(item.key));
+  }
+  return Object.entries(customer.details)
+    .filter(([key]) => !DETAIL_EXCLUDED_KEYS.has(key))
+    .map(([key, value]) => ({ key, value: value ?? "" }));
+}
+
+function getPrimaryAddress(customer: Customer): string {
+  const addr = toCustomerDetailEntries(customer).find((item) => item.key.includes("住所") && !item.key.includes("2"))?.value;
+  return addr || customer.address || "-";
+}
 
 // --- Main App Component ---
 function AppContent() {
@@ -58,12 +74,47 @@ function AppContent() {
   }, [textSize]);
 
   const filteredCustomers = useMemo(() => {
-    return customers.filter(c => {
-      const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const filtered = customers.filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(normalizedSearch);
       const matchesCity = selectedCity === "すべて" || c.city === selectedCity;
       return matchesSearch && matchesCity;
     });
+
+    if (!normalizedSearch && selectedCity === "すべて") {
+      const recent = JSON.parse(localStorage.getItem("recent_customers") || "[]") as string[];
+      const rank = new Map(recent.map((id, i) => [id, i]));
+      filtered.sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+    }
+
+    return filtered;
   }, [customers, searchQuery, selectedCity]);
+
+  const saveRecentCustomer = (customerId: string) => {
+    const recent = JSON.parse(localStorage.getItem("recent_customers") || "[]") as string[];
+    const next = [customerId, ...recent.filter((id) => id !== customerId)].slice(0, 20);
+    localStorage.setItem("recent_customers", JSON.stringify(next));
+  };
+
+  const openReportForCustomer = (customer: Customer) => {
+    saveRecentCustomer(customer.id);
+    setSelectedCustomer(customer);
+    setIsHistoryModalOpen(false);
+    setIsReportModalOpen(true);
+  };
+
+  const openDetailForCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsHistoryModalOpen(false);
+    setIsReportModalOpen(false);
+  };
+
+  const openHistoryForCustomer = (customer: Customer) => {
+    saveRecentCustomer(customer.id);
+    setSelectedCustomer(customer);
+    setIsReportModalOpen(false);
+    setIsHistoryModalOpen(true);
+  };
 
   const cities = ["すべて", ...Array.from(new Set(customers.map(c => c.city)))];
 
@@ -172,7 +223,7 @@ function AppContent() {
               key={customer.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              onClick={() => setSelectedCustomer(customer)}
+              onClick={() => openReportForCustomer(customer)}
               className="group flex cursor-pointer items-center justify-between rounded-xl bg-white p-5 shadow-sm border border-slate-200 transition-all hover:bg-blue-50/10 hover:border-blue-200 active:scale-[0.99]"
             >
               <div className="flex items-center gap-4">
@@ -182,14 +233,31 @@ function AppContent() {
                 <div>
                   <h3 className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{customer.name}</h3>
                   <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                    <MapPin className="h-3 w-3 text-slate-300" /> {customer.address}
+                    <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{customer.city || "未設定"}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                {customer.family?.some(f => f.allergy !== "なし") && (
-                  <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded border border-red-100">アレルギーあり</span>
-                )}
+              <div className="flex items-center gap-3 z-10">
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDetailForCustomer(customer);
+                    }}
+                    className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-100"
+                  >
+                    顧客情報
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openHistoryForCustomer(customer);
+                    }}
+                    className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100"
+                  >
+                    活動記録
+                  </button>
+                </div>
                 <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
               </div>
             </motion.div>
@@ -300,7 +368,7 @@ function CustomerDetailModal({ customer, onClose, onNewReport, onViewHistory }: 
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">{customer.name}</h2>
-              <p className="text-xs text-slate-500 font-medium">{customer.address}</p>
+              <p className="text-xs text-slate-500 font-medium">{getPrimaryAddress(customer)}</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg bg-slate-50 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">&times;</button>
@@ -311,24 +379,20 @@ function CustomerDetailModal({ customer, onClose, onNewReport, onViewHistory }: 
           <section>
             <h3 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">ご家族情報</h3>
             <div className="space-y-2">
-              {customer.family?.map((f, i) => (
-                <div key={i} className="flex justify-between items-center text-sm p-3 bg-slate-50 rounded-lg border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
-                  <div className="space-y-0.5">
-                    <p className="font-bold text-slate-800 leading-none">{f.name}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">{f.dob}</p>
+              {customer.family && customer.family.length > 0 ? (
+                customer.family.map((f, i) => (
+                  <div key={i} className="text-sm p-3 bg-slate-50 rounded-lg border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-slate-800 leading-none">{f.name}</p>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase">{f.dob}</p>
+                    </div>
+                    <div className="mt-1 text-xs text-red-600 font-bold">アレルギー: {f.allergy || "なし"}</div>
+                    {f.info && <div className="mt-0.5 text-xs text-slate-600 break-words">{f.info}</div>}
                   </div>
-                  <div className="text-right">
-                    <span className={cn(
-                      "px-2 py-0.5 rounded text-[10px] font-bold border",
-                      f.allergy !== "なし" 
-                        ? "bg-red-50 text-red-700 border-red-100" 
-                        : "bg-slate-50 text-slate-400 border-slate-200"
-                    )}>
-                      {f.allergy === "なし" ? "アレルギー: なし" : f.allergy}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-slate-400">登録なし</p>
+              )}
             </div>
           </section>
 
@@ -336,12 +400,46 @@ function CustomerDetailModal({ customer, onClose, onNewReport, onViewHistory }: 
           <section>
             <h3 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">基本詳細</h3>
             <div className="space-y-1">
-              {Object.entries(customer.details).map(([k, v]) => (
-                <div key={k} className="flex justify-between items-center py-2.5 px-1 border-b border-slate-50 text-sm">
-                  <span className="text-slate-400 font-medium">{k}</span>
-                  <span className="font-bold text-slate-700">{v}</span>
-                </div>
-              ))}
+              {toCustomerDetailEntries(customer).map(({ key, value }) => {
+                const isPrimaryAddress = key.includes("住所") && !key.includes("2") && value;
+                const isEmail = key.includes("メール") && value;
+                const isPhone = key.includes("電話") && value;
+
+                return (
+                  <div key={`${key}-${value}`} className="border-b border-slate-50 px-1 py-2.5 text-sm">
+                    <div className="mb-0.5 text-slate-400 font-medium">{key}</div>
+                    <div className="text-slate-700 font-bold break-words leading-relaxed">
+                      {value || "-"}
+                    </div>
+                    {isPrimaryAddress && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.lat && customer.lng ? `${customer.lat},${customer.lng}` : value)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-flex items-center rounded bg-blue-100 px-2 py-1 text-xs font-bold text-blue-600 hover:bg-blue-200"
+                      >
+                        地図
+                      </a>
+                    )}
+                    {isEmail && (
+                      <a
+                        href={`mailto:${value}`}
+                        className="mt-1 inline-flex items-center rounded bg-teal-100 px-2 py-1 text-xs font-bold text-teal-700 hover:bg-teal-200"
+                      >
+                        メール
+                      </a>
+                    )}
+                    {isPhone && (
+                      <a
+                        href={`tel:${value}`}
+                        className="mt-1 inline-flex items-center rounded bg-green-100 px-2 py-1 text-xs font-bold text-green-700 hover:bg-green-200"
+                      >
+                        電話
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>

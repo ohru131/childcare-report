@@ -7,12 +7,17 @@ export interface FamilyMember {
   info: string;
 }
 
+export interface CustomerDetailItem {
+  key: string;
+  value: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
   address: string;
   city: string;
-  details: Record<string, string>;
+  details: Record<string, string> | CustomerDetailItem[];
   lat?: number;
   lng?: number;
   family?: FamilyMember[];
