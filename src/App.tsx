@@ -400,6 +400,7 @@ function CustomerDetailModal({ customer, onClose, onNewReport, onViewHistory }: 
               {customer.name.charAt(0)}
             </div>
             <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">顧客詳細情報</p>
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">{customer.name}</h2>
               <p className="text-xs text-slate-500 font-medium">{getPrimaryAddress(customer)}</p>
             </div>
@@ -431,7 +432,7 @@ function CustomerDetailModal({ customer, onClose, onNewReport, onViewHistory }: 
 
           {/* Details Section */}
           <section>
-            <h3 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">基本詳細</h3>
+            <h3 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">基本情報</h3>
             <div className="space-y-1">
               {toCustomerDetailEntries(customer).map(({ key, value }) => {
                 const isPrimaryAddress = key.includes("住所") && !key.includes("2") && value;
@@ -1695,13 +1696,14 @@ function HistoryModal({ customer, onClose }: { customer: Customer, onClose: () =
       >
         <div className="flex items-center justify-between border-b border-slate-200 p-5 bg-slate-50 rounded-t-2xl">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">活動記録タイムライン</h3>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">過去の活動記録</h3>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{customer.name} の過去の記録</p>
           </div>
           <button onClick={onClose} className="rounded-lg bg-white border border-slate-200 p-2 text-slate-400 font-bold hover:bg-slate-50 transition-colors">&times;</button>
         </div>
 
         <div className="flex-grow overflow-y-auto p-8 space-y-8 custom-scrollbar pb-20">
+          <h4 className="font-bold text-slate-700 border-l-4 border-orange-500 pl-2">タイムライン</h4>
           {loading ? (
             <div className="flex h-full items-center justify-center text-slate-400 animate-pulse font-bold tracking-widest text-xs uppercase">データを取得中...</div>
           ) : reports.length === 0 ? (
