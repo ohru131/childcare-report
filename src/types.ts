@@ -46,3 +46,23 @@ export interface Receipt {
   handoffText: string;
   timestamp: any;
 }
+
+export interface AiModelConfig {
+  dailyReport: string;
+  accidentReport: string;
+  receiptOcr: string;
+}
+
+export interface PromptConfig {
+  generateWithWarnings: string;
+  generateAccident: string;
+  placeholderDaily: string;
+  placeholderAccident: string;
+  hintAccident: string;
+  placeholderHiyari: string;
+}
+
+export interface AppSettings {
+  models: AiModelConfig;
+  prompts: PromptConfig;
+}

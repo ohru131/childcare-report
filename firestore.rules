@@ -63,5 +63,20 @@ service cloud.firestore {
       allow delete: if isSignedIn() && isEmailVerified() 
         && existing().staffId == request.auth.uid;
     }
+
+    // App settings (prompt/model configuration)
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isEmailVerified();
+    }
+
+    // Audit logs
+    match /auditLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isEmailVerified()
+        && incoming().actorId == request.auth.uid
+        && incoming().timestamp == request.time;
+      allow update, delete: if false;
+    }
   }
 }

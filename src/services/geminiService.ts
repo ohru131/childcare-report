@@ -1,6 +1,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+let aiClient: GoogleGenAI | null = null;
+
+function getApiKey() {
+  const key = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("Gemini API key is missing. Set VITE_GEMINI_API_KEY in .env");
+  }
+  return key;
+}
+
+function getAiClient() {
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({ apiKey: getApiKey() });
+  }
+  return aiClient;
+}
 
 export interface DailyReportResponse {
   warnings: string[];
@@ -25,86 +40,134 @@ export interface ReceiptOcrResponse {
   receiptDate: string;
 }
 
-export async function generateDailyReport(text: string, timeInfo: string): Promise<DailyReportResponse> {
-  const prompt = `
-あなたは保育士の業務を支援するAIアシスタントです。
-以下の「保育日報のメモ（口語）」をもとに、日報を作成してください。
+type DailyOptions = {
+  model: string;
+  promptTemplate: string;
+  onPartialText?: (text: string) => void;
+};
 
-# 必須情報チェック
-以下の3点が入力テキストに含まれているか確認してください。
-1. **訪問当日のサポート内容** (具体的に何をしたか)
-2. **お客様情報** (家庭内の状況や家族との会話から見えた生活状況など)
-3. **振り返り** (自分のサポートに対しての内省・今回どうだったか)
+type AccidentOptions = {
+  model: string;
+  promptTemplate: string;
+  onPartialText?: (text: string) => void;
+};
 
-# 指示
-- 不足している必須情報があれば、その項目名を "warnings" 配列にリストアップしてください。
-- 不足情報の有無に関わらず、入力された情報を元に可能な範囲でレポートを作成してください。
+type OcrOptions = {
+  model: string;
+};
 
-# 入力テキスト
-${text}
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-# 時間情報
-${timeInfo}
-  `;
+function isTransientGeminiError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message || "";
+  return (
+    message.includes('"status":"UNAVAILABLE"') ||
+    message.includes('"code":503') ||
+    message.includes('"status":"RESOURCE_EXHAUSTED"') ||
+    message.includes('"code":429')
+  );
+}
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
+function buildPrompt(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce((acc, [key, value]) => {
+    return acc.replaceAll(`{${key}}`, value);
+  }, template);
+}
+
+function parseJsonResponse<T>(text: string | undefined): T {
+  const raw = (text || "{}").trim();
+  if (!raw) return {} as T;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenced?.[1]) {
+      return JSON.parse(fenced[1]) as T;
+    }
+    throw new Error("Gemini response was not valid JSON");
+  }
+}
+
+async function generateJsonWithStream<T>(params: {
+  model: string;
+  prompt: string;
+  responseSchema: any;
+  onPartialText?: (text: string) => void;
+}): Promise<T> {
+  const stream = await getAiClient().models.generateContentStream({
+    model: params.model,
+    contents: params.prompt,
     config: {
       responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          warnings: { type: Type.ARRAY, items: { type: Type.STRING } },
-          internal: { type: Type.STRING },
-          customer: { type: Type.STRING },
-        },
-        required: ["warnings", "internal", "customer"],
-      },
+      responseSchema: params.responseSchema,
     },
   });
 
-  return JSON.parse(response.text || "{}");
+  let fullText = "";
+  for await (const chunk of stream) {
+    const partial = chunk.text || "";
+    if (!partial) continue;
+    fullText += partial;
+    params.onPartialText?.(fullText);
+  }
+
+  return parseJsonResponse<T>(fullText);
 }
 
-export async function generateAccidentReport(text: string, timeInfo: string): Promise<AccidentReportResponse> {
-  const prompt = `
-あなたは保育園の事故報告書作成を支援するAIです。
-入力された状況説明（メモ）から、以下の項目に整理・分解してJSON形式で出力してください。
-
-# 入力テキスト
-${text}
-
-# 時間情報
-${timeInfo}
-  `;
-
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          occurrenceTime: { type: Type.STRING },
-          location: { type: Type.STRING },
-          accidentContent: { type: Type.STRING },
-          situation: { type: Type.STRING },
-          immediateResponse: { type: Type.STRING },
-          parentCorrespondence: { type: Type.STRING },
-          diagnosisTreatment: { type: Type.STRING },
-          prevention: { type: Type.STRING },
-        },
-        required: ["occurrenceTime", "location", "accidentContent", "situation", "immediateResponse", "parentCorrespondence", "diagnosisTreatment", "prevention"],
+export async function generateDailyReport(
+  text: string,
+  timeInfo: string,
+  options: DailyOptions,
+): Promise<DailyReportResponse> {
+  const prompt = buildPrompt(options.promptTemplate, { inputText: text, timeInfo });
+  return generateJsonWithStream<DailyReportResponse>({
+    model: options.model,
+    prompt,
+    onPartialText: options.onPartialText,
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        warnings: { type: Type.ARRAY, items: { type: Type.STRING } },
+        internal: { type: Type.STRING },
+        customer: { type: Type.STRING },
       },
+      required: ["warnings", "internal", "customer"],
     },
   });
-
-  return JSON.parse(response.text || "{}");
 }
 
-export async function extractReceiptInfo(base64Image: string): Promise<ReceiptOcrResponse> {
+export async function generateAccidentReport(
+  text: string,
+  timeInfo: string,
+  options: AccidentOptions,
+): Promise<AccidentReportResponse> {
+  const prompt = buildPrompt(options.promptTemplate, { inputText: text, timeInfo });
+  return generateJsonWithStream<AccidentReportResponse>({
+    model: options.model,
+    prompt,
+    onPartialText: options.onPartialText,
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        occurrenceTime: { type: Type.STRING },
+        location: { type: Type.STRING },
+        accidentContent: { type: Type.STRING },
+        situation: { type: Type.STRING },
+        immediateResponse: { type: Type.STRING },
+        parentCorrespondence: { type: Type.STRING },
+        diagnosisTreatment: { type: Type.STRING },
+        prevention: { type: Type.STRING },
+      },
+      required: ["occurrenceTime", "location", "accidentContent", "situation", "immediateResponse", "parentCorrespondence", "diagnosisTreatment", "prevention"],
+    },
+  });
+}
+
+export async function extractReceiptInfo(base64Image: string, options: OcrOptions): Promise<ReceiptOcrResponse> {
   const prompt = `
     Analyze the image of this receipt.
     Identify the following information:
@@ -114,26 +177,44 @@ export async function extractReceiptInfo(base64Image: string): Promise<ReceiptOc
 
     Return the result in JSON format.
   `;
+  const fallbackModels = [options.model, "gemini-2.5-flash"].filter(
+    (v, i, a) => !!v && a.indexOf(v) === i,
+  );
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [
-      { text: prompt },
-      { inlineData: { mimeType: "image/jpeg", data: base64Image.split(",")[1] } },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          amount: { type: Type.NUMBER },
-          storeName: { type: Type.STRING },
-          receiptDate: { type: Type.STRING },
-        },
-        required: ["amount", "storeName", "receiptDate"],
-      },
-    },
-  });
+  let lastError: unknown;
+  for (const model of fallbackModels) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await getAiClient().models.generateContent({
+          model,
+          contents: [
+            { text: prompt },
+            { inlineData: { mimeType: "image/jpeg", data: base64Image.split(",")[1] } },
+          ],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                amount: { type: Type.NUMBER },
+                storeName: { type: Type.STRING },
+                receiptDate: { type: Type.STRING },
+              },
+              required: ["amount", "storeName", "receiptDate"],
+            },
+          },
+        });
 
-  return JSON.parse(response.text || "{}");
+        return parseJsonResponse<ReceiptOcrResponse>(response.text);
+      } catch (error) {
+        lastError = error;
+        if (!isTransientGeminiError(error) || attempt === 3) {
+          break;
+        }
+        await sleep(attempt * 700);
+      }
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("OCR request failed");
 }

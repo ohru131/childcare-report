@@ -8,9 +8,96 @@
 }
 
 @layer base {
-  body {
-    @apply font-sans bg-slate-50 text-slate-900;
+  html {
+    font-size: 17px;
   }
+
+  body {
+    @apply font-sans bg-slate-100 text-slate-900;
+  }
+}
+
+.text-\[9px\] {
+  font-size: 0.9rem !important;
+  line-height: 1.2 !important;
+}
+
+.text-\[10px\] {
+  font-size: 0.98rem !important;
+  line-height: 1.3 !important;
+}
+
+.text-\[11px\] {
+  font-size: 1.05rem !important;
+  line-height: 1.35 !important;
+}
+
+.text-xs {
+  font-size: 1.02rem !important;
+  line-height: 1.4 !important;
+}
+
+html[data-text-size="small"] .text-xs {
+  font-size: 1rem !important;
+  line-height: 1.45 !important;
+}
+
+html[data-text-size="small"] .text-sm {
+  font-size: 1.125rem !important;
+  line-height: 1.55 !important;
+}
+
+html[data-text-size="small"] .text-base {
+  font-size: 1.2rem !important;
+}
+
+html[data-text-size="small"] input,
+html[data-text-size="small"] textarea,
+html[data-text-size="small"] button,
+html[data-text-size="small"] select {
+  font-size: 1rem !important;
+}
+
+html[data-text-size="medium"] .text-xs {
+  font-size: 1.075rem !important;
+  line-height: 1.5 !important;
+}
+
+html[data-text-size="medium"] .text-sm {
+  font-size: 1.2rem !important;
+  line-height: 1.6 !important;
+}
+
+html[data-text-size="medium"] .text-base {
+  font-size: 1.3rem !important;
+}
+
+html[data-text-size="medium"] input,
+html[data-text-size="medium"] textarea,
+html[data-text-size="medium"] button,
+html[data-text-size="medium"] select {
+  font-size: 1.1rem !important;
+}
+
+html[data-text-size="large"] .text-xs {
+  font-size: 1.15rem !important;
+  line-height: 1.55 !important;
+}
+
+html[data-text-size="large"] .text-sm {
+  font-size: 1.3rem !important;
+  line-height: 1.7 !important;
+}
+
+html[data-text-size="large"] .text-base {
+  font-size: 1.45rem !important;
+}
+
+html[data-text-size="large"] input,
+html[data-text-size="large"] textarea,
+html[data-text-size="large"] button,
+html[data-text-size="large"] select {
+  font-size: 1.2rem !important;
 }
 
 .report-markdown h3 {
@@ -18,6 +105,35 @@
 }
 .report-markdown p {
   @apply mb-2 text-slate-600;
+}
+
+.receipt-compact-input {
+  font-size: 0.95rem !important;
+  line-height: 1.25rem !important;
+}
+
+.receipt-date-input {
+  position: relative;
+  font-size: 0.78rem !important;
+  line-height: 1rem !important;
+  padding-right: 1.1rem !important;
+  letter-spacing: -0.01em;
+}
+
+.receipt-date-input::-webkit-datetime-edit {
+  font-size: 0.78rem;
+}
+
+.receipt-date-input::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  right: 0.2rem;
+}
+
+.receipt-time-input {
+  font-size: 0.82rem !important;
+  line-height: 1.1rem !important;
 }
 
 @layer utilities {
