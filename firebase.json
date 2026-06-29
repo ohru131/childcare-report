@@ -1,11 +1,12 @@
 {
   "firestore": {
-    "databaseId": "ai-studio-5b9ca531-8bac-495f-8d24-ff1c40567a9c",
+    "databaseId": "childcare-report-main",
     "rules": "firestore.rules",
     "edition": "ENTERPRISE",
     "dataAccessMode": "FIRESTORE_NATIVE"
   },
   "emulators": {
+    "singleProjectMode": false,
     "auth": {
       "host": "127.0.0.1",
       "port": 9099

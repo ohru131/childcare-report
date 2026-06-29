@@ -1,11 +1,12 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { User, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { User, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, AuthError } from "firebase/auth";
 import { auth, googleProvider } from "../lib/firebase";
 import { logAuditEvent } from "../services/auditService";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  signingIn: boolean;
   signIn: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -41,6 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async () => {
+    if (signingIn) {
+      return;
+    }
+
+    setSigningIn(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       await logAuditEvent({
@@ -49,7 +56,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         actorName: result.user.displayName || "Unknown",
       });
     } catch (error) {
-      console.error("Error signing in with Google", error);
+      const authError = error as AuthError;
+      if (authError.code === "auth/popup-blocked") {
+        // Popup blocked environments (or strict browsers) should use redirect flow.
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
+      if (authError.code === "auth/cancelled-popup-request" || authError.code === "auth/popup-closed-by-user") {
+        // Ignore expected user/collision cases to avoid noisy assertions in dev logs.
+        return;
+      }
+
+      console.error("Error signing in with Google", authError);
+    } finally {
+      setSigningIn(false);
     }
   };
 
@@ -69,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, logout }}>
+    <AuthContext.Provider value={{ user, loading, signingIn, signIn, logout }}>
       {children}
     </AuthContext.Provider>
   );

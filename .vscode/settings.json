@@ -1,3 +1,6 @@
 {
-  "workbench.startupEditor": "readme"
+  "workbench.startupEditor": "readme",
+  "chat.tools.terminal.autoApprove": {
+    "\\\"NG": true
+  }
 }

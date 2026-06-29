@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
-import { fetchCustomers, seedSampleData } from "./services/customerService";
+import { fetchCustomers, importCustomersFromFile, seedSampleData, type CustomerImportProgress, type CustomerImportResult } from "./services/customerService";
 import { AppSettings, Customer, CustomerDetailItem, Report } from "./types";
 import { Search, MapPin, User, FileText, Plus, LogOut, ChevronRight, Mic, Camera, AlertTriangle, CheckCircle2, History, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -65,7 +65,7 @@ function getPrimaryAddress(customer: Customer): string {
 
 // --- Main App Component ---
 function AppContent() {
-  const { user, signIn, logout, loading: authLoading } = useAuth();
+  const { user, signIn, logout, loading: authLoading, signingIn } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState("すべて");
@@ -76,6 +76,16 @@ function AppContent() {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [textSize, setTextSize] = useState<"small" | "medium" | "large">("large");
+
+  const importCustomers = async (
+    file: File,
+    onProgress?: (progress: CustomerImportProgress) => void,
+  ): Promise<CustomerImportResult> => {
+    const result = await importCustomersFromFile(file, onProgress);
+    const latest = await fetchCustomers();
+    setCustomers(latest);
+    return result;
+  };
 
   // Initialize data
   useEffect(() => {
@@ -170,9 +180,10 @@ function AppContent() {
           <p className="mb-10 text-slate-500 font-medium">Childcare Professional Suite</p>
           <button
             onClick={signIn}
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-slate-900 py-4 font-bold text-white transition-all hover:bg-slate-800 active:scale-95 shadow-xl"
+            disabled={signingIn}
+            className="flex w-full items-center justify-center gap-3 rounded-lg bg-slate-900 py-4 font-bold text-white transition-all hover:bg-slate-800 active:scale-95 shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Googleアカウントでログイン
+            {signingIn ? "ログイン処理中..." : "Googleアカウントでログイン"}
           </button>
         </motion.div>
       </div>
@@ -368,6 +379,7 @@ function AppContent() {
                 details: "AI settings updated",
               });
             }}
+            onImportCustomers={importCustomers}
           />
         )}
       </AnimatePresence>
@@ -611,6 +623,35 @@ function ReportModal({ customer, onClose, user, settings }: { customer: Customer
       hour: hourOptions.includes(hour) ? hour : "09",
       minute: minuteOptions.includes(minute) ? minute : "00",
     };
+  };
+
+  const toFullWidth = (value: number) => String(value).replace(/[0-9]/g, (s) => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+
+  const calculateAge = (dobStr: string): string => {
+    if (!dobStr) return "";
+    const parts = dobStr.split("/");
+    if (parts.length !== 3) return "";
+
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return "";
+
+    const birthDate = new Date(year, month - 1, day);
+    const today = new Date();
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+
+    if (today.getDate() < birthDate.getDate()) {
+      months -= 1;
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+
+    return `（${toFullWidth(Math.max(years, 0))}歳${toFullWidth(Math.max(months, 0))}か月）`;
   };
 
   const updateStartTimePart = (type: "hour" | "minute", value: string) => {
@@ -1122,15 +1163,17 @@ function ReportModal({ customer, onClose, user, settings }: { customer: Customer
               <select 
                 className="w-full rounded-lg border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700"
                 onChange={(e) => {
-                  const child = customer.family!.find(f => f.name === e.target.value);
+                  const selectedIndex = Number(e.target.value);
+                  if (!Number.isFinite(selectedIndex)) return;
+                  const child = customer.family?.[selectedIndex];
                   if (child) {
                     setInputText(prev => `対象者: ${child.name} (${child.dob})\n` + prev);
                   }
                 }}
               >
                 <option value="">選択してください</option>
-                {customer.family.map(f => (
-                  <option key={f.name} value={f.name}>{f.name}</option>
+                {customer.family.map((f, i) => (
+                  <option key={`${f.name}-${f.dob}-${i}`} value={i}>{f.name} {calculateAge(f.dob)}</option>
                 ))}
               </select>
             </div>
@@ -1487,12 +1530,14 @@ function SettingsModal({
   onTextSizeChange,
   onClose,
   onSave,
+  onImportCustomers,
 }: {
   settings: AppSettings,
   textSize: "small" | "medium" | "large",
   onTextSizeChange: (size: "small" | "medium" | "large") => void,
   onClose: () => void,
-  onSave: (next: AppSettings) => Promise<void>
+  onSave: (next: AppSettings) => Promise<void>,
+  onImportCustomers: (file: File, onProgress?: (progress: CustomerImportProgress) => void) => Promise<CustomerImportResult>
 }) {
   const sharedReportModel = settings.models.dailyReport || settings.models.accidentReport;
   const [draft, setDraft] = useState<AppSettings>({
@@ -1504,6 +1549,9 @@ function SettingsModal({
     },
   });
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<CustomerImportProgress | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const recommendedModels = [
     "gemini-2.5-flash",
@@ -1542,6 +1590,37 @@ function SettingsModal({
       prompts: { ...prev.prompts, [key]: value },
     }));
   };
+
+  const onSelectImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setImporting(true);
+    setImportProgress({ total: 0, completed: 0, upserted: 0, skipped: 0, stage: "importing" });
+    try {
+      const result = await onImportCustomers(file, (progress) => {
+        setImportProgress(progress);
+      });
+      const message = [
+        `処理行数: ${result.processed}`,
+        `アップサート: ${result.upserted}`,
+        `スキップ: ${result.skipped}`,
+        result.errors.length > 0 ? `注意:\n${result.errors.slice(0, 8).join("\n")}` : "",
+      ].filter(Boolean).join("\n");
+      alert(`顧客データの取り込みが完了しました。\n\n${message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "取り込み処理に失敗しました。";
+      alert(message);
+    } finally {
+      setImporting(false);
+      setImportProgress(null);
+    }
+  };
+
+  const importPercent = importProgress && importProgress.total > 0
+    ? Math.round((importProgress.completed / importProgress.total) * 100)
+    : 0;
 
   return (
     <motion.div
@@ -1641,6 +1720,47 @@ function SettingsModal({
               <textarea className="w-full min-h-[100px] rounded-lg border-slate-200 bg-white p-3 text-xs" value={draft.prompts.placeholderAccident} onChange={(e) => updatePrompt("placeholderAccident", e.target.value)} />
               <textarea className="w-full min-h-[120px] rounded-lg border-slate-200 bg-white p-3 text-xs" value={draft.prompts.hintAccident} onChange={(e) => updatePrompt("hintAccident", e.target.value)} />
               <textarea className="w-full min-h-[100px] rounded-lg border-slate-200 bg-white p-3 text-xs" value={draft.prompts.placeholderHiyari} onChange={(e) => updatePrompt("placeholderHiyari", e.target.value)} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">顧客データ取り込み</h4>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs text-slate-600">gas-childcare-report 形式のTSV/CSVを読み込み、Firestore customersへアップサートします。</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".tsv,.csv,text/tab-separated-values,text/csv"
+                className="hidden"
+                onChange={onSelectImportFile}
+              />
+              <button
+                type="button"
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+              >
+                {importing ? "取り込み中..." : "TSV/CSVを選択して取り込む"}
+              </button>
+              {importing && importProgress && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600">
+                    <span>進捗</span>
+                    <span className="font-bold text-slate-700">
+                      {importProgress.completed}/{importProgress.total} ({importPercent}%)
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded bg-slate-200">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-200"
+                      style={{ width: `${importPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    アップサート: {importProgress.upserted} / スキップ: {importProgress.skipped}
+                  </p>
+                </div>
+              )}
             </div>
           </section>
         </div>
